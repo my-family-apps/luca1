@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Lista de Presentes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section class="top">
+    <div class="text">
+      <h1 id="title"></h1>
+      <p id="intro"></p>
+    </div>
+    <div id="photo"></div>
+  </section>
+
+  <section>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <script src="gifts.js"></script>
+  <script>
+    document.getElementById("title").textContent = "1º Aniversário do " + CHILD_NAME;
+    document.getElementById("intro").textContent = INTRO_TEXT;
+    document.getElementById("photo").innerHTML = CHILD_PHOTO
+      ? `<img class="photo" src="${CHILD_PHOTO}" alt="${CHILD_NAME}">`
+      : `<div class="photo"></div>`;
+
+    document.getElementById("grid").innerHTML = GIFTS.map(g => `
+      <a class="card" href="gift.html?id=${g.id}">
+        ${g.image ? `<img src="${g.image}" alt="${g.title}">` : `<div class="placeholder"></div>`}
+        <p><strong>${g.title}</strong><br>${g.text}</p>
+      </a>`).join("");
+  </script>
+</body>
+</html>

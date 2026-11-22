@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Como presentear</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section class="page">
+    <h1 id="title"></h1>
+    <p>Escaneie o QR code com o app do seu banco para fazer o Pix:</p>
+    <div id="qr"></div>
+
+    <p id="pixwrap" style="display:none">
+      Ou copie o código Pix (copia e cola):<br>
+      <button class="btn" id="copy">Copiar código Pix</button>
+    </p>
+
+    <p>Depois do Pix, digite seu nome para receber o cartão de agradecimento:</p>
+    <input id="name" placeholder="Seu nome">
+    <button class="btn" id="make">Criar meu cartão</button>
+
+    <canvas id="card" width="800" height="600" style="display:none"></canvas>
+    <img id="preview" style="display:none; max-width:100%; border-radius:8px; margin-top:15px" alt="Cartão">
+    <br>
+    <a class="btn" id="download" style="display:none; margin-top:15px">Baixar cartão (.png)</a>
+    <p id="hint" style="display:none; font-size:.9rem">
+      No iPhone, toque em Baixar e escolha Salvar imagem. Ou pressione e segure sobre o cartão acima.
+    </p>
+    <p><a href="index.html">&larr; Voltar para a lista</a></p>
+  </section>
+
+  <script src="gifts.js"></script>
+  <script>
+    const id = Number(new URLSearchParams(location.search).get("id"));
+    const gift = GIFTS.find(g => g.id === id) || GIFTS[0];
+
+    document.getElementById("title").textContent = gift.title;
+    document.getElementById("qr").innerHTML = gift.qr
+      ? `<img class="qr" src="${gift.qr}" alt="QR code Pix">`
+      : `<div class="placeholder"></div>`;
+
+    function copyText(t) {
+      if (navigator.clipboard && window.isSecureContext)
+        return navigator.clipboard.writeText(t);
+      return new Promise((res, rej) => {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.style.cssText = "position:fixed;opacity:0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, t.length);
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        ok ? res() : rej();
+      });
+    }
+
+    if (gift.pix) {
+      document.getElementById("pixwrap").style.display = "block";
+      document.getElementById("copy").onclick = () =>
+        copyText(gift.pix)
+          .then(() => { document.getElementById("copy").textContent = "Copiado!"; })
+          .catch(() => prompt("Copie o código Pix:", gift.pix));
+    }
+
+    function loadImg(src) {
+      return new Promise(res => {
+        if (!src) return res(null);
+        const img = new Image();
+        img.onload = () => res(img);
+        img.onerror = () => { console.warn("Imagem não encontrada:", src); res(null); };
+        img.src = src;
+      });
+    }
+
+    // Design do cartão: edite esta função depois
+    function drawCard(ctx, name, photo) {
+      ctx.fillStyle = "#9fbf7f";
+      ctx.fillRect(0, 0, 800, 600);
+      ctx.strokeStyle = "#2f4a2f";
+      ctx.lineWidth = 8;
+      ctx.strokeRect(20, 20, 760, 560);
+
+      if (photo) {
+        const s = Math.min(photo.width, photo.height);
+        ctx.drawImage(photo, (photo.width - s) / 2, (photo.height - s) / 2, s, s, 260, 55, 280, 280);
+        ctx.lineWidth = 6;
+        ctx.strokeRect(260, 55, 280, 280);
+      }
+
+      ctx.fillStyle = "#2f4a2f";
+      ctx.textAlign = "center";
+      ctx.font = "bold 40px Georgia";
+      ctx.fillText("Obrigado, " + name + "!", 400, 420, 600);
+      ctx.font = "28px Georgia";
+      ctx.fillText("Seu presente: " + gift.title, 400, 490, 600);
+      ctx.fillText("Com carinho, " + CHILD_NAME + " e família", 400, 540, 600);
+    }
+
+    document.getElementById("make").onclick = async () => {
+      const name = document.getElementById("name").value.trim();
+      if (!name) return alert("Por favor, digite seu nome.");
+      const canvas = document.getElementById("card");
+      const photo = await loadImg(typeof CARD_PHOTO !== "undefined" ? CARD_PHOTO : "");
+      let url;
+      try {
+        drawCard(canvas.getContext("2d"), name, photo);
+        url = canvas.toDataURL("image/png");
+      } catch (e) {
+        console.error("Foto bloqueada, desenhando sem ela:", e);
+        canvas.width = 800; // limpa o canvas e o bloqueio
+        drawCard(canvas.getContext("2d"), name, null);
+        url = canvas.toDataURL("image/png");
+      }
+
+      const preview = document.getElementById("preview");
+      preview.src = url;
+      preview.style.display = "block";
+      document.getElementById("hint").style.display = "block";
+
+      const link = document.getElementById("download");
+      link.style.display = "inline-block";
+      canvas.toBlob(blob => {
+        const file = new File([blob], "cartao-de-agradecimento.png", { type: "image/png" });
+        link.href = URL.createObjectURL(blob);
+        link.download = file.name;
+        link.onclick = e => {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            e.preventDefault();
+            navigator.share({ files: [file] }).catch(err => {
+              if (err.name !== "AbortError") alert(err.name + ": " + err.message);
+            });
+          }
+        };
+      }, "image/png");
+    };
+  </script>
+</body>
+</html>
